@@ -234,14 +234,19 @@
       </div>
     </div>
 
-    <!-- 第二頁：內容輸入 -->
+    <!-- 第二頁：內容輸入 (已優化 HTML Form 結構) -->
     <div id="step-input" class="hidden">
       <h2 id="post-type-title">匿名投稿</h2>
-      <textarea id="post-content" maxlength="70" placeholder="在此留下你的心聲...（請勿超過 70 字）" oninput="updateCharCount()"></textarea>
-      <div class="char-count" id="char-box"><span id="current-count">0</span> / 70 字</div>
-      <div class="btn-group">
-        <button class="btn" onclick="submitPost()"><span>發送投稿 🚀</span></button>
-      </div>
+      
+      <form id="submission-form" onsubmit="submitPost(event)">
+        <input type="hidden" id="post-type-input" name="投稿類型" value="">
+        <textarea id="post-content" name="投稿內容" maxlength="70" placeholder="在此留下你的心聲...（請勿超過 70 字）" oninput="updateCharCount()" required></textarea>
+        <div class="char-count" id="char-box"><span id="current-count">0</span> / 70 字</div>
+        <div class="btn-group">
+          <button type="submit" class="btn" id="submit-btn"><span>發送投稿 🚀</span></button>
+        </div>
+      </form>
+
     </div>
 
     <!-- 第三頁：感謝投稿 -->
@@ -255,13 +260,11 @@
   </main>
 
   <script>
-    // ⚠️ 請填入你的 Formspree 連結（例如 https://formspree.io/f/xknwxyza）
-    const FORMSPREE_URL = "YOUR_FORMSPREE_ENDPOINT"; 
-
-    let selectedType = "";
+    // ⚠️ 請在此處填入你的 Formspree 網址 (例如 https://formspree.io/f/xknwxyza)
+    const FORMSPREE_URL = "https://formspree.io/f/xjyvnvjr"; 
 
     function startPost(type) {
-      selectedType = type;
+      document.getElementById("post-type-input").value = type;
       let emoji = '💬';
       if (type === '告白') emoji = '💌';
       if (type === '靠北') emoji = '📢';
@@ -286,42 +289,49 @@
       }
     }
 
-    async function submitPost() {
+    async function submitPost(event) {
+      event.preventDefault(); // 防止網頁重新載入
+      
       const content = document.getElementById("post-content").value.trim();
+      const btn = document.getElementById("submit-btn");
+      const form = document.getElementById("submission-form");
+      const formData = new FormData(form);
 
       if (!content) {
         alert("文字框空空的捏，寫點什麼吧！✍️");
         return;
       }
 
-      // 未設定 Formspree 時的測試模式
-      if (FORMSPREE_URL === "YOUR_FORMSPREE_ENDPOINT") {
-        console.log("模擬送出成功！類型：", selectedType, "內容：", content);
-        showSuccess();
+      // 未設定連結時的測試提醒
+      if (FORMSPREE_URL === "YOUR_FORMSPREE_ENDPOINT" || !FORMSPREE_URL) {
+        alert("尚未填寫 Formspree 網址！請至程式碼倒數第 20 行修改 FORMSPREE_URL 的內容。");
         return;
       }
+
+      // 改變按鈕狀態
+      btn.disabled = true;
+      btn.querySelector("span").innerText = "發送中...";
 
       try {
         const response = await fetch(FORMSPREE_URL, {
           method: "POST",
+          body: formData,
           headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            投稿類型: selectedType,
-            投稿內容: content,
-            發送時間: new Date().toLocaleString()
-          })
+            'Accept': 'application/json'
+          }
         });
 
         if (response.ok) {
           showSuccess();
         } else {
-          alert("Oops! 投稿失敗了，請稍後再試一次 😭");
+          alert("Oops! 投稿失敗了，請確定 Formspree 網址是否正確。");
+          btn.disabled = false;
+          btn.querySelector("span").innerText = "發送投稿 🚀";
         }
       } catch (error) {
         alert("網路好像有點問題，請檢查連線後重試！");
+        btn.disabled = false;
+        btn.querySelector("span").innerText = "發送投稿 🚀";
       }
     }
 
